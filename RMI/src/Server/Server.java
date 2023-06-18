@@ -9,7 +9,7 @@ import RMIDemo.ServiceHourImplements;
 /** Server class: contains the service hour - creates and register the remote object serviceHour.*/
 public class Server {
     public static void main(String[] args) throws Exception{
-        // Iinstance/creates the remote object serviceHour.
+        // Instance/creates the remote object serviceHour.
         ServiceHour serviceHour = new ServiceHourImplements();
 
         // Creates the registry on port 1099.

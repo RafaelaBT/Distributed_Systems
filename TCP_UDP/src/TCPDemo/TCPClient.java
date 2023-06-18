@@ -23,6 +23,7 @@ public class TCPClient {
 
         // Creates a buffer to catch the user's keyboard input string.
         BufferedReader inUser = new BufferedReader(new InputStreamReader(System.in));
+        
         // Receives the user's keyboard input string.
         String text = inUser.readLine(); // BLOCKING METHOD
 
