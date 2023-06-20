@@ -1,83 +1,44 @@
 package Peer;
 
-//import java.io.BufferedReader;
-//import java.io.DataOutputStream;
-import java.io.IOException;
-//import java.io.InputStreamReader;
-//import java.net.Socket;
-import java.net.UnknownHostException;
-import java.rmi.NotBoundException;
+import java.io.File;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
+import java.util.Scanner;
 
-import RMI.NapsterFile;
-import RMI.NapsterInterface;
+import RMI.PeerRMIInterface;
 
-/** Peer:  class which required the connection from the peer to the server. */
 public class Peer {
-    public static void main(String[] args) throws UnknownHostException, IOException, NotBoundException {
-        /* --- REMOTE OBJECT --- */
 
-        // Gets the registry.
-        Registry reg = LocateRegistry.getRegistry();
+    public static void main(String[] args) throws Exception {
+        System.out.println("INITIALIZING PEER...\n");
 
-        // Looks up the remote object name in the registry and casts (converts) the reference.
-        NapsterInterface reference = (NapsterInterface) reg.lookup("rmi://127.0.0.1/file.jpg");
+        System.out.println("INSERTS THE PEER INFORMATION BELOW.");
 
-        // Gets the serializable object from the remote object.
-        NapsterFile file = reference.getFile("file.jpeg");
+        try (Scanner scanner = new Scanner(System.in)) {
 
-        System.out.println("File name: " + file.fileName + "\n");
+            System.out.println("IP Adress: ");
+            String ip = scanner.nextLine();
 
-        /*
-        // [ --- TCP CONNECTION --- ]
+            System.out.println("\nDirectory Path: ");
+            String path = scanner.nextLine();
 
-        // Requires a connection to the server at port 9000.
-        Socket s = new Socket("localhost", 9000);
-        
+            System.out.println("\nPort: ");
+            int port = scanner.nextInt();
 
-        // [ --- TCP SEND DATA --- ]
+            File dir = new File(path);
 
-        // Creates the buffer to send the data output string to the server.
-        DataOutputStream send = new DataOutputStream(s.getOutputStream());
+            String[] peerFiles = dir.list();
 
-        // Creates a buffer to capture the user input string.
-        BufferedReader inUser = new BufferedReader(new InputStreamReader(System.in));
-        
-        System.out.println("WELCOME TO NASPTER!");
+            Registry reg = LocateRegistry.getRegistry();
 
-        System.out.print("Write your message: ");
+            PeerRMIInterface peerRMI = (PeerRMIInterface) reg.lookup("rmi://127.0.0.1/serverRMI");
 
-        // Receives the user input string.
-        String message = inUser.readLine(); // BLOCKING METHOD
+            String peer = peerRMI.join(ip, port, path, peerFiles);
 
-        // Sends the user message to the server.
-        send.writeBytes(message + "\n");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
 
-        System.out.println("\nMESSAGE SENT SUCCESSFULLY!");
-
-        System.out.println("\nWAITING FOR THE SERVER RESPONSE...");
-
-
-        // [ --- TCP RECEIVE DATA --- ]
-
-        // Creates the buffer to receive the data input string from the server.
-        BufferedReader receive = new BufferedReader(new InputStreamReader(s.getInputStream()));
-
-        // Receives the server response.
-        String response = receive.readLine(); // BOCKING METHOD
-
-        System.out.println("\n" + response);
-        
-        // BLOCKING METHOD: the peer remains blocked until the user or the server sends the message.
-        
-
-        // [ --- TCP DISCONNECTION --- ]
-
-        System.out.println("\nDISCONNECTING...");
-
-        // Close the channel.
-        s.close();
-        */
     }
+
 }
