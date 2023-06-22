@@ -5,8 +5,8 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.util.Scanner;
 
-import RMI.PeerRMIImplements;
-import RMI.PeerRMIInterface;
+import RMI.ServerRMIImplements;
+import RMI.ServerRMIInterface;
 
 public class Servidor {
 
@@ -23,13 +23,17 @@ public class Servidor {
             System.out.println("\nRegistry Port: ");
             int regPort = scanner.nextInt();
 
-            PeerRMIInterface serverRMI = new PeerRMIImplements();
-        
             LocateRegistry.createRegistry(regPort);
+
+            ServerRMIInterface svStub = new ServerRMIImplements();
+
+            String regName = "rmi://NapsterRMI";
 
             Registry reg = LocateRegistry.getRegistry(ip, regPort, null);
 
-            reg.bind("rmi://"+ip+"/serverRMI", serverRMI);
+            reg.bind(regName, svStub);
+
+            System.out.println("\nRUNNING SERVER...");
 
         } catch (Exception e) {
             e.printStackTrace();

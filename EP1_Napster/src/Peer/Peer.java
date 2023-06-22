@@ -5,7 +5,7 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.util.Scanner;
 
-import RMI.PeerRMIInterface;
+import RMI.ServerRMIInterface;
 
 public class Peer {
 
@@ -19,21 +19,27 @@ public class Peer {
             System.out.println("IP Adress: ");
             String ip = scanner.nextLine();
 
-            System.out.println("\nDirectory Path: ");
-            String path = scanner.nextLine();
-
             System.out.println("\nPort: ");
             int port = scanner.nextInt();
 
-            File dir = new File(path);
+            System.out.println("\nDirectory Path: ");
+            String path = scanner.nextLine();
 
-            String[] peerFiles = dir.list();
+            File dir = new File(path);
+            String[] files = dir.list();
 
             Registry reg = LocateRegistry.getRegistry();
+            String svName = "rmi://NapsterRMI";
+            ServerRMIInterface peerRMI = (ServerRMIInterface) reg.lookup(svName);
 
-            PeerRMIInterface peerRMI = (PeerRMIInterface) reg.lookup("rmi://127.0.0.1/serverRMI");
-
-            String peer = peerRMI.join(ip, port, path, peerFiles);
+            String join = peerRMI.join(ip, port, path, files);
+            if (join.compareTo("JOIN_OK") == 0) {
+                System.out.print("\nSou peer "+ip+":"+port+" com arquivos");
+                for (String fileName : files) {
+                    System.out.print(" "+fileName);
+                }
+                System.out.println(".");
+            }
 
         } catch (Exception e) {
             e.printStackTrace();
