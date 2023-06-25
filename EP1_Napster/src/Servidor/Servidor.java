@@ -1,5 +1,6 @@
 package Servidor;
 
+import java.rmi.AlreadyBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
@@ -10,34 +11,27 @@ import RMI.ServerRMIInterface;
 
 public class Servidor {
 
-    public static void main(String[] args) throws RemoteException {
-        System.out.println("INITIALIZING SERVER...\n");
+    public static void main(String[] args) throws RemoteException, AlreadyBoundException {
+        Scanner scanner = new Scanner(System.in);
 
-        System.out.println("INSERTS THE SERVER INFORMATION BELOW.");
+        System.out.println("-> SERVER INFORMATIONS <-");
 
-        try (Scanner scanner = new Scanner(System.in)) {
+        System.out.print("IP Adress: ");
+        String ip = scanner.nextLine();
 
-            System.out.println("IP Adress: ");
-            String ip = scanner.nextLine();
+        System.out.print("Registry Port: ");
+        int regPort = scanner.nextInt();
 
-            System.out.println("\nRegistry Port: ");
-            int regPort = scanner.nextInt();
+        scanner.close();
 
-            LocateRegistry.createRegistry(regPort);
+        LocateRegistry.createRegistry(regPort);
 
-            ServerRMIInterface svStub = new ServerRMIImplements();
+        Registry reg = LocateRegistry.getRegistry(ip, regPort, null);
+        String regName = "rmi://NapsterRMI";
+        ServerRMIInterface svStub = new ServerRMIImplements();
 
-            String regName = "rmi://NapsterRMI";
+        reg.bind(regName, svStub);
 
-            Registry reg = LocateRegistry.getRegistry(ip, regPort, null);
-
-            reg.bind(regName, svStub);
-
-            System.out.println("\nRUNNING SERVER...");
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        
+        System.out.println("\nRUNNING SERVER...");
     }
 }

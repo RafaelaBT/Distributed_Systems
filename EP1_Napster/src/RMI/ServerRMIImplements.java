@@ -2,33 +2,60 @@ package RMI;
 
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
+import java.util.ArrayList;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 public class ServerRMIImplements extends UnicastRemoteObject implements ServerRMIInterface{
+    private final ConcurrentMap<String, ArrayList<PeerRMI>> peersFiles = new ConcurrentHashMap<>();
+    private PeerRMI peer;
 
     public ServerRMIImplements() throws RemoteException {
         super();
     }
 
-    @Override
-    public String join(String ip, int port, String path, String[] files) throws RemoteException {
-        ConcurrentHashMap<String, PeerRMI[]> m = new ConcurrentHashMap<String, PeerRMI[]>();
+    public void peerInfo(String ip, String port, String path) {
+        peer = new PeerRMI(ip, port, path);
+    }
 
-        PeerRMI peerList[] = {new PeerRMI(ip, port, path)};
+    @Override
+    public String join(String[] files) throws RemoteException {
+        System.out.println("\n-> JOINED <-");
+        System.out.println("Peer "+peer.ip+":"+peer.port+" adicionado com os arquivos:");
 
         if (files.length > 0) {
+            ArrayList<PeerRMI> peerList = new ArrayList<PeerRMI>();
+            peerList.add(peer);
+
             for (String fileName : files) {
-                m.putIfAbsent(fileName, peerList);
-                /* Para ter acesso aos itens
-                for (PeerRMI p : m.get(fileName)) {
-                    System.out.println(p.ip);
-                }*/
+                if (peersFiles.putIfAbsent(fileName, peerList) != null) {
+                    update(fileName);
+                }
+                System.out.println("- "+fileName+" ");
             }
         }
-        else {
-            m.putIfAbsent("", peerList);
-        }
-        
+
         return "JOIN_OK";
     }
+
+    @Override
+    public ArrayList<PeerRMI> search(String fileName) throws RemoteException {
+        System.out.println("\n-> SEARCHED <-");
+        System.out.println("Peer "+peer.ip+":"+peer.port+" solicitou arquivo "+fileName+".");
+
+        return peersFiles.computeIfPresent(fileName, (k, v) -> peersFiles.get(k));
+    }
+
+    @Override
+    public String update(String fileName) throws RemoteException {
+        peersFiles.computeIfPresent(fileName, (k, v) -> {
+            if (!v.contains(peer)) {
+                v.add(peer);
+            }
+            return v;
+        });
+
+        return "UPDATE_OK";
+    }
+
 }
