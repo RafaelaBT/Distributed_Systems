@@ -15,4 +15,16 @@ public class PeerRMI  implements Serializable {
         this.path = path;
     }
 
+    @Override
+    public boolean equals(Object obj) {
+        if (obj == this) {
+            return true;
+        }
+        if (obj == null || getClass() != obj.getClass()) {
+            return false;
+        }
+        PeerRMI that = (PeerRMI) obj;
+        return ip.equals(that.ip) && port.equals(that.port) && path.equals(that.path);
+    }
+
 }

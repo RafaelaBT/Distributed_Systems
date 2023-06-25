@@ -14,12 +14,9 @@ public class ServerRMIImplements extends UnicastRemoteObject implements ServerRM
         super();
     }
 
-    public void peerInfo(String ip, String port, String path) {
-        peer = new PeerRMI(ip, port, path);
-    }
-
     @Override
-    public String join(String[] files) throws RemoteException {
+    public String join(String ip, String port, String path, String[] files) throws RemoteException {
+        peer = new PeerRMI(ip, port, path);
         System.out.println("\n-> JOINED <-");
         System.out.println("Peer "+peer.ip+":"+peer.port+" adicionado com os arquivos:");
 
@@ -39,19 +36,25 @@ public class ServerRMIImplements extends UnicastRemoteObject implements ServerRM
     }
 
     @Override
-    public ArrayList<PeerRMI> search(String fileName) throws RemoteException {
+    public ArrayList<PeerRMI> search(String fileName) throws Exception {
+        if (peer == null) {
+            throw new Exception("EXTERN PEER DETECTED!");
+        }
         System.out.println("\n-> SEARCHED <-");
         System.out.println("Peer "+peer.ip+":"+peer.port+" solicitou arquivo "+fileName+".");
 
         return peersFiles.computeIfPresent(fileName, (k, v) -> peersFiles.get(k));
     }
-
+    
     @Override
     public String update(String fileName) throws RemoteException {
         peersFiles.computeIfPresent(fileName, (k, v) -> {
-            if (!v.contains(peer)) {
-                v.add(peer);
+            for (PeerRMI i : v) {
+                if (i.equals(peer)) {
+                    return v;
+                }
             }
+            v.add(peer);
             return v;
         });
 
