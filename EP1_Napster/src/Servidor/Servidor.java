@@ -16,7 +16,6 @@ public class Servidor {
 
     public static void main(String[] args) throws RemoteException, AlreadyBoundException {
         // Note: All souts are for inform the user when to input data.
-        // Reference: http://www.beginwithjava.com/java/inputoutput/reading-keyboard-input.html
 
         // Declares (open) the new scanner object with the standard input device System.in to read the user keyboard input.
         Scanner scanner = new Scanner(System.in);

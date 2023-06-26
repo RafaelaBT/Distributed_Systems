@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.util.ArrayList;
@@ -21,6 +22,8 @@ import RMI.ServerRMIInterface;
 
 public class Peer implements Runnable{
     private Socket sv;
+    private static String path;
+    private ServerRMIInterface peerRMI;
 
     private Peer() {
 
@@ -34,26 +37,23 @@ public class Peer implements Runnable{
     public void run() {
         try {
             DataInputStream dataInputStream = new DataInputStream(sv.getInputStream());
-            String path = dataInputStream.readUTF();
+            String fileName = dataInputStream.readUTF();
 
             DataOutputStream dataOutputStream = new DataOutputStream(sv.getOutputStream());
 
             int bytes = 0;
-            File file = new File(path);
+            File file = new File(path+"\\"+fileName);
             if (file.exists()) {
                 FileInputStream fileInputStream = new FileInputStream(file);
 
                 dataOutputStream.writeLong(file.length());
-                byte[] buffer = new byte[60*1024];
+                byte[] buffer = new byte[10*1024];
                 while ((bytes = fileInputStream.read(buffer)) != -1) {
                     dataOutputStream.write(buffer, 0, bytes);
                     dataOutputStream.flush();
                 }
 
                 fileInputStream.close();
-            }
-            else {
-                throw new Exception("THE FILE DOESN'T EXIST.");
             }
             
             sv.close();
@@ -73,12 +73,12 @@ public class Peer implements Runnable{
         String port = scanner.nextLine();
 
         System.out.print("Directory Path: ");
-        String path = scanner.nextLine();
+        path = scanner.nextLine();
 
-        return new PeerRMI(ip, port, path);
+        return new PeerRMI(ip, port);
     }
 
-    private String[] getFiles(String path) {
+    private String[] getFiles() {
         File dir = new File(path);
         ArrayList<String> suffixes = new ArrayList<>(Arrays.asList("mp4", "m4v", "mov", "qt", "avi", "flv", "wmv", "asf", "mpeg", "mpg", "vob", "mkv",    "asf", "rm", "rmvb", "vob", "ts", "dat"));
         String[] files = dir.list(new FilenameFilter() {
@@ -91,20 +91,19 @@ public class Peer implements Runnable{
         return files;
     }
 
-    private void download(String ip, int port, String serverPath, String peerPath, String fileName) throws UnknownHostException, IOException {
-        Socket s = new Socket(ip, Integer.valueOf(port));
+    private void download(String ip, int port, String fileName) throws UnknownHostException, IOException {
+        Socket s = new Socket(ip, port);
 
         int bytes = 0;
 
         DataOutputStream dataOutputStream = new DataOutputStream(s.getOutputStream());
-        dataOutputStream.writeUTF(serverPath+"\\"+fileName);
+        dataOutputStream.writeUTF(fileName);
 
         DataInputStream dataInputStream = new DataInputStream(s.getInputStream());
-
-        FileOutputStream fileOutputStream = new FileOutputStream(peerPath+"\\"+fileName);
         long size = dataInputStream.readLong();
 
-        byte[] buffer = new byte[4*1024];
+        FileOutputStream fileOutputStream = new FileOutputStream(path+"\\"+fileName);
+        byte[] buffer = new byte[10*1024];
 
         while (size > 0 && (bytes = dataInputStream.read(buffer, 0, (int)Math.min(buffer.length, size))) != -1) {
             fileOutputStream.write(buffer, 0, bytes);
@@ -115,9 +114,33 @@ public class Peer implements Runnable{
         s.close();
     }
 
+    public String peerJoin(Peer p, PeerRMI peer) throws RemoteException {
+        String[] files = p.getFiles();
+        String join = peerRMI.join(files, peer);
+        if (join.compareTo("JOIN_OK") == 0) {
+            System.out.println("Sou peer "+peer.ip+":"+peer.port+" com arquivos ");
+            for (String file : files) {
+                System.out.println("- "+file+" ");
+            }
+        }
+        return join;
+    }
+
+    public ArrayList<PeerRMI> peerSearch(String fileName, ArrayList<PeerRMI> list, PeerRMI peer) throws RemoteException {
+        list = peerRMI.search(fileName, peer);
+        System.out.println("Peers com os arquivo solicitado:");
+        if (list != null) {
+            for (PeerRMI i : list) {
+                System.out.println("- "+i.ip+":"+i.port);
+            }
+        }
+        return list;
+    }
+
     public static void main(String[] args) throws Exception {
-        Peer p = new Peer();
         Scanner scanner = new Scanner(System.in);
+
+        Peer p = new Peer();
         PeerRMI peer = p.getInfo(scanner);
 
         Thread t = new Thread(new Runnable() {
@@ -137,8 +160,7 @@ public class Peer implements Runnable{
         t.start();
 
         Registry reg = LocateRegistry.getRegistry();
-        String svName = "rmi://NapsterRMI";
-        ServerRMIInterface peerRMI = (ServerRMIInterface) reg.lookup(svName);
+        p.peerRMI = (ServerRMIInterface) reg.lookup("rmi://NapsterRMI");
 
         String join = "";
         String fileName = "";
@@ -151,34 +173,22 @@ public class Peer implements Runnable{
             switch (choice) {
                 case "1":
                     System.out.println("\n-> OPTION: JOIN <-");
-                    String[] files = p.getFiles(peer.path);
-                    join = peerRMI.join(files, peer);
-                    if (join.compareTo("JOIN_OK") == 0) {
-                        System.out.println("Sou peer "+peer.ip+":"+peer.port+" com arquivos ");
-                        for (String i : files) {
-                            System.out.println("- "+i+" ");
-                        }
-                    }
+                    join = p.peerJoin(p, peer);
                     break;
                         
                 case "2":
                     if (join.compareTo("JOIN_OK") == 0) {
                         System.out.println("\n-> OPTION: SEARCH <-");
                         System.out.print("File: ");
+                        
                         fileName = scanner.nextLine();
-                        list = peerRMI.search(fileName, peer);
-                        System.out.println("Peers com os arquivo solicitado:");
-                        if (list != null) {
-                            for (PeerRMI i : list) {
-                                System.out.println("- "+i.ip+":"+i.port);
-                            }
-                        }
+                        list = p.peerSearch(fileName, list, peer);
                     }
                     else {
                         System.out.println("\n-> JOIN THE SERVER FIRST <-");
                     }
                     break;
-
+                    
                 case "3":
                     if (join.compareTo("JOIN_OK") == 0) {
                         if (list != null) {
@@ -188,16 +198,20 @@ public class Peer implements Runnable{
                             System.out.print("Port: ");
                             String portServer = scanner.nextLine();
 
-                            for (PeerRMI i : list) {
-                                if ((i.ip.compareTo(ipServer) == 0) && (i.port.compareTo(portServer) == 0)) {
-                                    int port = Integer.valueOf(i.port);
-                                    p.download(i.ip, port, i.path, peer.path, fileName);
+                            PeerRMI peerSv = new PeerRMI(ipServer, portServer);
 
-                                    String path = peer.path+"\\"+fileName;
-                                    if (peerRMI.update(fileName, peer).compareTo("UPDATE_OK") == 0) {
+                            int size = list.size();
+                            while(size > 0) {
+                                size --;
+                                if (list.get(size).equals(peerSv)) {
+                                    int port = Integer.valueOf(peerSv.port);
+                                    p.download(peerSv.ip, port, fileName);
+
+                                    if (p.peerRMI.update(fileName, peer).compareTo("UPDATE_OK") == 0) {
                                         System.out.println("Arquivo "+fileName+" baixado com sucesso na pasta "+path+".");
                                     } 
-                                    break; 
+
+                                    size = 0;
                                 }
                             }
                         }

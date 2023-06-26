@@ -12,8 +12,6 @@ import java.util.concurrent.ConcurrentMap;
  */
 public class ServerRMIImplements extends UnicastRemoteObject implements ServerRMIInterface{
     // Creates a concurrentHashMap (data structure) to keep the filenames (keys) and the peers list (values) who owns them.
-    /* References: https://www.baeldung.com/java-concurrent-map
-    * https://www.baeldung.com/concurrenthashmap-reading-and-writing*/
     private final ConcurrentMap<String, ArrayList<PeerRMI>> peersFiles = new ConcurrentHashMap<>();
 
     /**

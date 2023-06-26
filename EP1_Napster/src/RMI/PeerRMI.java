@@ -9,17 +9,14 @@ public class PeerRMI  implements Serializable {
     // Peer attributes
     public String ip;
     public String port;
-    public String path;
 
     // PeerRMI constructor - sets initial values for PeerRMI object attributes.
-    public PeerRMI(String ip, String port, String path) {
+    public PeerRMI(String ip, String port) {
         this.ip = ip;
         this.port = port;
-        this.path = path;
     }
 
     // Overrides the equals method to compare two PeerRMI objects.
-    // Reference: https://www.baeldung.com/java-comparing-objects
     @Override
     public boolean equals(Object obj) {
         // Returns true if the entities are equals.
@@ -32,7 +29,7 @@ public class PeerRMI  implements Serializable {
         }
         // Compare each attibute value from the objects and returns the result.
         PeerRMI that = (PeerRMI) obj;
-        return ip.equals(that.ip) && port.equals(that.port) && path.equals(that.path);
+        return ip.equals(that.ip) && port.equals(that.port);
     }
 
 }
