@@ -7,7 +7,6 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.FilenameFilter;
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
@@ -100,8 +99,7 @@ public class Peer implements Runnable{
         DataOutputStream dataOutputStream = new DataOutputStream(s.getOutputStream());
         dataOutputStream.writeUTF(serverPath+"\\"+fileName);
 
-        InputStream in = s.getInputStream();
-        DataInputStream dataInputStream = new DataInputStream(in);
+        DataInputStream dataInputStream = new DataInputStream(s.getInputStream());
 
         FileOutputStream fileOutputStream = new FileOutputStream(peerPath+"\\"+fileName);
         long size = dataInputStream.readLong();
@@ -154,7 +152,7 @@ public class Peer implements Runnable{
                 case "1":
                     System.out.println("\n-> OPTION: JOIN <-");
                     String[] files = p.getFiles(peer.path);
-                    join = peerRMI.join(peer.ip, peer.port, peer.path, files);
+                    join = peerRMI.join(files, peer);
                     if (join.compareTo("JOIN_OK") == 0) {
                         System.out.println("Sou peer "+peer.ip+":"+peer.port+" com arquivos ");
                         for (String i : files) {
@@ -168,7 +166,7 @@ public class Peer implements Runnable{
                         System.out.println("\n-> OPTION: SEARCH <-");
                         System.out.print("File: ");
                         fileName = scanner.nextLine();
-                        list = peerRMI.search(fileName);
+                        list = peerRMI.search(fileName, peer);
                         System.out.println("Peers com os arquivo solicitado:");
                         if (list != null) {
                             for (PeerRMI i : list) {
@@ -195,10 +193,11 @@ public class Peer implements Runnable{
                                     int port = Integer.valueOf(i.port);
                                     p.download(i.ip, port, i.path, peer.path, fileName);
 
-                                    String path = i.path+"\\"+fileName;
-                                    if (peerRMI.update(fileName).compareTo("UPDATE_OK") == 0) {
+                                    String path = peer.path+"\\"+fileName;
+                                    if (peerRMI.update(fileName, peer).compareTo("UPDATE_OK") == 0) {
                                         System.out.println("Arquivo "+fileName+" baixado com sucesso na pasta "+path+".");
-                                    }   
+                                    } 
+                                    break; 
                                 }
                             }
                         }
