@@ -1,5 +1,6 @@
 package RMI;
 
+
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
@@ -30,7 +31,7 @@ public class ServerRMIImplements extends UnicastRemoteObject implements ServerRM
 
         /* Execute if there is at least one file in the file list.
         * Note: does not insert the peer in the map if the peer doesn't have a file (not necessary). */
-        if (files.length > 0) {
+        if (files != null) {
             // Creates a empty peer list and inserts the peer who wants join the server.
             ArrayList<PeerRMI> peerList = new ArrayList<PeerRMI>();
             peerList.add(peer);

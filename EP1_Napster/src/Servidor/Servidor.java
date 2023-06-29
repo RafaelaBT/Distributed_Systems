@@ -1,5 +1,6 @@
 package Servidor;
 
+
 import java.rmi.AlreadyBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
@@ -10,7 +11,7 @@ import RMI.ServerRMIImplements;
 import RMI.ServerRMIInterface;
 
 /**
- * RMI server class. Resposible for running the server.
+ * Server class. Resposible for running the server.
  */
 public class Servidor {
 

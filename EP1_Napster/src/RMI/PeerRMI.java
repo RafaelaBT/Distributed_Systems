@@ -1,12 +1,13 @@
 package RMI;
 
+
 import java.io.Serializable;
 
 /**
  * Peer class. Instaces of this class are serializables objects, i. e., it can be transferred using a byte string (process called marshalling/unmarshalling).
  */
 public class PeerRMI  implements Serializable {
-    // Peer attributes
+    // Peer attributes.
     public String ip;
     public String port;
 
