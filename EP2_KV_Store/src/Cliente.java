@@ -18,7 +18,7 @@ import javafx.util.Pair;
 public class Cliente {
     private final HashMap<String, Pair<String, Timestamp>> data = new HashMap<>();
 
-    private Integer qtd = 3;
+    private Integer qtd = 1;
     private ArrayList<Pair<String, Integer>> servidores = new ArrayList<>();
     private BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
 
@@ -103,10 +103,17 @@ public class Cliente {
             System.out.print("Value: ");
             String value = reader.readLine();
 
-            if (!data.containsKey(key)) {
-                Timestamp timestamp = new Timestamp(0);
-                Pair<String, Timestamp> pair = new Pair<>(value, timestamp);
-                data.put(key, pair);
+            Timestamp timestamp = new Timestamp(0);
+
+            if (data.containsKey(key)) {
+                timestamp = new Timestamp(System.currentTimeMillis());
+            }
+
+            Pair<String, Timestamp> pair = new Pair<>(value, timestamp);
+            data.put(key, pair);
+
+            for (String chave: data.keySet()) {
+                System.out.println("Key:"+chave+"Value:"+data.get(key));
             }
 
         } catch (IOException e) {
@@ -165,10 +172,16 @@ public class Cliente {
                 message = new Mensagem("GET", key, timestamp);
                 send.writeBytes(gson.toJson(message)+"\n");
 
-                /*response = receive.readLine();
-                System.out.println("----------------------");
-                System.out.println("From server ("+socket.getInetAddress()+"): "+response);
-                System.out.println("----------------------");*/
+                response = gson.fromJson(receive.readLine(), Mensagem.class);
+
+                if (response.getType().compareTo("GET_OK")==0) {
+                    System.out.println("----------------------");
+                    System.out.println("GET key: "+key+" value: "+response.getKey()+" obtido do servidor "+server.getKey()+":"+server.getValue()+", meu timestamp "+timestamp+" e do servidor "+response.getTimestamp());
+                    System.out.println("----------------------");
+
+                    data.put(key, new Pair<>(response.getKey(), response.getTimestamp()));
+                }
+                
             }
             socket.close();
                     

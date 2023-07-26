@@ -15,7 +15,7 @@ import java.util.regex.Pattern;
 
 import com.google.gson.Gson;
 
-import RMI.PeerRMI;
+import javafx.util.Pair;
 
 public class Servidor implements Runnable{
     private final String ip;
@@ -25,7 +25,7 @@ public class Servidor implements Runnable{
     private Servidor lead;
     private ArrayList<Servidor> servidores = new ArrayList<>();
 
-    private final ConcurrentMap<String, ArrayList<PeerRMI>> data = new ConcurrentHashMap<>();
+    private ConcurrentMap<String, Pair<String, Timestamp>> data = new ConcurrentHashMap<>();
     
     public Servidor() throws IOException {
         this.ip = ipRead();
@@ -43,6 +43,7 @@ public class Servidor implements Runnable{
         this.lead = server.lead;
         this.socket = socket;
         this.servidores = server.servidores;
+        this.data = server.data;
     }
 
     public String ipRead() throws IOException {
@@ -101,6 +102,66 @@ public class Servidor implements Runnable{
 
     private void setLead(Servidor lead) {
         this.lead = lead;
+    }
+
+    /*private void replicationRq(String key, String value, Timestamp timestamp) {
+        for (Servidor servidor : this.servidores) {
+            String type = null;
+            do {
+                try {
+                    Socket svSocket = new Socket(servidor.ip, servidor.port);
+
+                    InputStreamReader in = new InputStreamReader(svSocket.getInputStream());
+                    BufferedReader receive = new BufferedReader(in);
+
+                    OutputStream out = svSocket.getOutputStream();
+                    DataOutputStream send = new DataOutputStream(out);
+
+                    Gson gson = new Gson();
+
+                    Mensagem message = new Mensagem("REPLICATION", key, value, timestamp);
+                    String json = gson.toJson(message);
+
+                    send.writeBytes(json+"\n");
+
+                    Mensagem response = gson.fromJson(receive.readLine(), Mensagem.class);
+                    type = response.getType();
+                
+                    in.close();
+                    out.close();
+                    svSocket.close();
+                } catch (IOException e) {
+                    System.out.println("FAILED TO CONNECT TO SERVER.");
+                    System.out.println();
+                }
+            } while (type.compareTo("REPLICATION_OK")!=0);
+        }
+    }*/
+
+    private void update(String key, String value, Timestamp timestamp) {
+        this.data.computeIfPresent(key, (k, v) -> {
+            Pair<String, Timestamp> pair = new Pair<String,Timestamp>(value, timestamp);
+            this.data.replace(k, v, pair);
+            return pair;
+        });
+    }
+
+    private Timestamp insert(String key, String value){
+        Timestamp timestamp = new Timestamp(0);
+        Pair<String, Timestamp> pair = new Pair<>(value, timestamp);
+        
+        if (this.data.putIfAbsent(key, pair) != null) {
+            timestamp = new Timestamp(System.currentTimeMillis());
+            this.update(key, value, timestamp);
+        }
+
+        //this.replicationRq(key, value, timestamp);
+
+        return timestamp;
+    }
+
+    private Pair<String, Timestamp> getVal(String key) {
+        return this.data.computeIfPresent(key, (k,v) -> this.data.get(k));
     }
 
     private void add(Servidor nServer) {
@@ -189,19 +250,41 @@ public class Servidor implements Runnable{
             System.out.println("Message received from "+ipClient+" at port "+portClient+": "+type+"\n");
 
             String response;
+            String key;
 
             switch (type) {
                 case "PUT":
-                    //implements
-                    System.out.println("Key: "+message.getKey()+". Value: "+message.getValue());
+                    key = message.getKey();
+                    String value = message.getValue();
+                    if (this.equals(lead)) {
+                        Timestamp timestamp = this.insert(key, value);
+                        System.out.println("Cliente: "+ipClient+":"+portClient+" PUT key: "+key+" value:"+value+".");
 
-                    response = gson.toJson(new Mensagem("PUT_OK", new Timestamp(0))); //teste
-                    send.writeBytes(response+"\n");
+                        response = gson.toJson(new Mensagem("PUT_OK", timestamp));
+                        send.writeBytes(response+"\n");
+                    } else {
+                        //implements
+                        System.out.println("Encaminhando PUT key: "+key+" value:"+value+".");
+                        //this.resend();
+                    }
                     break;
 
                 case "GET":
                     //implements
                     System.out.println("Key: "+message.getKey()+". Timestamp: "+message.getTimestamp());
+                    key = message.getKey();
+
+                    /*for (String chave : this.data.keySet()) {
+                        System.out.println("Key: "+chave+", Value: "+this.getVal(chave));
+                    }*/
+
+                    if (this.getVal(key) == null) {
+                        response = gson.toJson(new Mensagem("GET_OK", null, new Timestamp(System.currentTimeMillis())));
+                    } else {
+                        Pair<String, Timestamp> pair = this.getVal(key);
+                        response = gson.toJson(new Mensagem("GET_OK", pair.getKey(), pair.getValue()));
+                    }
+                    send.writeBytes(response+"\n");
                     break;
 
                 case "ADD":
