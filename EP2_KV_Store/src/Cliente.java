@@ -4,19 +4,30 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.Socket;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Random;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import com.google.gson.Gson;
 
 import javafx.util.Pair;
 
 public class Cliente {
+    private final ConcurrentMap<String, Pair<String, Timestamp>> clients = new ConcurrentHashMap<>();
+
     private Integer qtd = 3;
     private ArrayList<Pair<String, Integer>> servidores = new ArrayList<>();
     private BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
 
-    private String ipRead() throws IOException {
+    private Pair<String, Timestamp> getVal(String key) {
+        return clients.computeIfPresent(key, (k, v) -> clients.get(k));
+    }
+
+    public String ipRead() throws IOException {
         String ip;
         Boolean valid;
         do {
@@ -34,7 +45,7 @@ public class Cliente {
         return ip;
     }
 
-    private Integer portRead() throws IOException {
+    public Integer portRead() throws IOException {
         Integer port;
         Boolean valid;
 
@@ -86,7 +97,37 @@ public class Cliente {
         return servidores.get(n);
     }
 
-    private void connection() {
+    private String put() {
+        String key = null;
+        try {
+            System.out.println("---------------------- PUT -----------------------");
+
+            System.out.print("Key: ");
+            key = reader.readLine();
+
+            System.out.print("Value: ");
+            String value = reader.readLine();
+
+            Timestamp timestamp = new Timestamp(0);
+
+            Pair<String, Timestamp> pair = new Pair<>(value, timestamp);
+
+            if (clients.putIfAbsent(key, pair) != null) {
+                clients.computeIfPresent(key, (k, v) -> {
+                    timestamp.setTime(System.currentTimeMillis());
+                    Pair<String, Timestamp> nPair = new Pair<>(value, timestamp);
+                    clients.replace(k, v, nPair);
+                    return nPair;
+                });
+            }
+        } catch (IOException e) {
+            System.out.println("COULD NOT READ THE INPUT.");
+            e.printStackTrace();
+        }
+        return key;
+    }
+
+    private void connect(String op) {
         Pair<String, Integer> server = randomSv();
         try {
             Socket socket = new Socket(server.getKey(), server.getValue());
@@ -96,81 +137,88 @@ public class Cliente {
 
             InputStreamReader in = new InputStreamReader(socket.getInputStream());
             BufferedReader receive = new BufferedReader(in);
-            
-            String choice;
+
+            Gson gson = new Gson();
+            Mensagem message;
             String response;
-            
-            System.out.println("---------------------- MENU ----------------------");      
-            do {
-                System.out.println("1. Put");
-                System.out.println("2. Get");
-                System.out.println("3. Exit");
-                System.out.print("Option: ");
-                choice = reader.readLine();
 
-                switch (choice) {
-                    case "1":
-                        send.writeBytes(choice+"\n");
-                        response = receive.readLine();
-                        System.out.println("----------------------");
-                        System.out.println("From server ("+socket.getInetAddress()+"): "+response);
-                        System.out.println("----------------------");
-                        break;
-
-                    case "2":
-                        send.writeBytes(choice+"\n");
-                        response = receive.readLine();
-                        System.out.println("----------------------");
-                        System.out.println("From server ("+socket.getInetAddress()+"): "+response);
-                        System.out.println("----------------------");
-                        break;
-
-                    case "3":
-                        send.writeBytes(choice+"\n");
-                        response = receive.readLine();
-                        System.out.println("----------------------");
-                        System.out.println(response);
-                        break;
-
-                    default:
-                        System.out.println("----------------------");
-                        System.out.println("Invalid option!");
-                        break;
-                }
+            if (op.compareTo("1")==0) {
+                String key = this.put();
+                Pair<String, Timestamp> value = this.getVal(key);
                 
-            } while (choice.compareTo("3") != 0);
-            
-            socket.close();
+                //message = new Mensagem("PUT", key, value.getKey());
+                //send.writeBytes(gson.toJson(message)+"\n");
 
+                //response = receive.readLine();
+                //System.out.println("----------------------");
+                //System.out.println("From server ("+socket.getInetAddress()+"): "+response);
+                //System.out.println("----------------------");
+            } else {
+                send.writeBytes("GET\n");
+                response = receive.readLine();
+                System.out.println("----------------------");
+                System.out.println("From server ("+socket.getInetAddress()+"): "+response);
+                System.out.println("----------------------");
+            }
+            socket.close();
+                    
         } catch (IOException e) {
             System.out.println("COULD NOT CREATE A SOCKET.");
             e.printStackTrace();
         }
     }
 
+    private void menu() {
+        System.out.println("---------------------- MENU ----------------------");
+        String op = null;
+
+        do { 
+            System.out.println("1. PUT");
+            System.out.println("2. GET");
+            System.out.println("3. EXIT");
+            System.out.print("Option: ");
+
+            try {
+                op = reader.readLine();
+            } catch (IOException e) {
+                System.out.println("COULD NOT READ THE INPUT.");
+            }
+            
+            if (op.compareTo("1")==0 || op.compareTo("2")==0) {
+                this.connect(op);
+            } else if (op.compareTo("3")==0) {
+                System.out.println("----------------------");
+                System.out.println("Exiting...");
+            } else {
+                System.out.println("----------------------");
+                System.out.println("Invalid option!");
+            }
+        } while (op.compareTo("3") != 0);
+    }
+
     private void start() {
         try {
-            String choice;
+            String op;
 
             System.out.println("---------------------- MENU ----------------------");    
             do {
                 System.out.println("1. INIT");
                 System.out.print("Option: ");
-                choice = reader.readLine();
+                op = reader.readLine();
 
-                if (choice.compareTo("1")!=0) {
+                if (op.compareTo("1")!=0) {
                     System.out.println("----------------------");
                     System.out.println("Invalid Option!");
                 }
 
-            } while (choice.compareTo("1")!=0);
+            } while (op.compareTo("1")!=0);
 
             this.receiveSvs();
 
-            this.connection();
+            this.menu();
 
         } catch (IOException e) {
-            System.out.println("COULD NOT RECEIVE THE INPUT.");
+            System.out.println("COULD NOT READ THE INPUT.");
             e.printStackTrace();
         }
     }
