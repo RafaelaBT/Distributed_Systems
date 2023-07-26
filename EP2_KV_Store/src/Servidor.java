@@ -6,21 +6,26 @@ import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import com.google.gson.Gson;
 
-/** Server class. */
+import RMI.PeerRMI;
+
 public class Servidor implements Runnable{
-    // Server attributes
     private final String ip;
     private final Integer port;
 
     private Socket socket;
     private Servidor lead;
     private ArrayList<Servidor> servidores = new ArrayList<>();
+
+    private final ConcurrentMap<String, ArrayList<PeerRMI>> data = new ConcurrentHashMap<>();
     
     public Servidor() throws IOException {
         this.ip = ipRead();
@@ -140,7 +145,7 @@ public class Servidor implements Runnable{
                 } catch (IOException e) {
                     //ignore
                 }
-            } while (con.compareTo("OK_CONNECT")!=0);
+            } while (con.compareTo("CONNECT_OK")!=0);
         }
     }
 
@@ -188,22 +193,33 @@ public class Servidor implements Runnable{
             switch (type) {
                 case "PUT":
                     //implements
+                    System.out.println("Key: "+message.getKey()+". Value: "+message.getValue());
+
+                    response = gson.toJson(new Mensagem("PUT_OK", new Timestamp(0))); //teste
+                    send.writeBytes(response+"\n");
                     break;
 
                 case "GET":
                     //implements
+                    System.out.println("Key: "+message.getKey()+". Timestamp: "+message.getTimestamp());
                     break;
 
                 case "ADD":
                     this.add(new Servidor(message.getIp(), message.getPort()));
 
-                    response = gson.toJson(new Mensagem("OK_CONNECT"));
+                    response = gson.toJson(new Mensagem("CONNECT_OK"));
                     send.writeBytes(response+"\n");
 
                     break;
                 
+                case "REPLICATION":
+                    break;
+                
+                case "REPLICATION_OK":
+                    break;
+                
                 default:
-                    //ignore
+                    // Ignore
                     break;
             }
             

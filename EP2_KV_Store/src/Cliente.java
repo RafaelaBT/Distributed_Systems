@@ -6,9 +6,8 @@ import java.io.OutputStream;
 import java.net.Socket;
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Random;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -17,15 +16,11 @@ import com.google.gson.Gson;
 import javafx.util.Pair;
 
 public class Cliente {
-    private final ConcurrentMap<String, Pair<String, Timestamp>> clients = new ConcurrentHashMap<>();
+    private final HashMap<String, Pair<String, Timestamp>> data = new HashMap<>();
 
     private Integer qtd = 3;
     private ArrayList<Pair<String, Integer>> servidores = new ArrayList<>();
     private BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
-
-    private Pair<String, Timestamp> getVal(String key) {
-        return clients.computeIfPresent(key, (k, v) -> clients.get(k));
-    }
 
     public String ipRead() throws IOException {
         String ip;
@@ -97,7 +92,7 @@ public class Cliente {
         return servidores.get(n);
     }
 
-    private String put() {
+    private String putKV() {
         String key = null;
         try {
             System.out.println("---------------------- PUT -----------------------");
@@ -108,18 +103,12 @@ public class Cliente {
             System.out.print("Value: ");
             String value = reader.readLine();
 
-            Timestamp timestamp = new Timestamp(0);
-
-            Pair<String, Timestamp> pair = new Pair<>(value, timestamp);
-
-            if (clients.putIfAbsent(key, pair) != null) {
-                clients.computeIfPresent(key, (k, v) -> {
-                    timestamp.setTime(System.currentTimeMillis());
-                    Pair<String, Timestamp> nPair = new Pair<>(value, timestamp);
-                    clients.replace(k, v, nPair);
-                    return nPair;
-                });
+            if (!data.containsKey(key)) {
+                Timestamp timestamp = new Timestamp(0);
+                Pair<String, Timestamp> pair = new Pair<>(value, timestamp);
+                data.put(key, pair);
             }
+
         } catch (IOException e) {
             System.out.println("COULD NOT READ THE INPUT.");
             e.printStackTrace();
@@ -140,25 +129,46 @@ public class Cliente {
 
             Gson gson = new Gson();
             Mensagem message;
-            String response;
+            Mensagem response;
+
+            String key;
 
             if (op.compareTo("1")==0) {
-                String key = this.put();
-                Pair<String, Timestamp> value = this.getVal(key);
-                
-                //message = new Mensagem("PUT", key, value.getKey());
-                //send.writeBytes(gson.toJson(message)+"\n");
+                key = putKV();
+                String value = data.get(key).getKey();
 
-                //response = receive.readLine();
-                //System.out.println("----------------------");
-                //System.out.println("From server ("+socket.getInetAddress()+"): "+response);
-                //System.out.println("----------------------");
+                message = new Mensagem("PUT", key, value);
+                send.writeBytes(gson.toJson(message)+"\n");
+
+                response = gson.fromJson(receive.readLine(), Mensagem.class);
+
+                if (response.getType().compareTo("PUT_OK")==0) {
+                    Timestamp timestamp = response.getTimestamp();
+                    Pair<String, Timestamp> pair = new Pair<>(value, timestamp);
+                    data.put(key, pair);
+                    
+                    System.out.println("----------------------");
+                    System.out.println("PUT_OK key: "+key+" value: "+value+" timestamp "+timestamp+" realizada no servidor "+server.getKey()+":"+server.getValue()+".");
+                    System.out.println("----------------------");
+                }
             } else {
-                send.writeBytes("GET\n");
-                response = receive.readLine();
+                System.out.println("---------------------- GET -----------------------");
+                System.out.print("Key: ");
+                key = reader.readLine();
+
+                Timestamp timestamp = new Timestamp(0);
+
+                if (data.containsKey(key)) {
+                    timestamp = data.get(key).getValue();
+                }
+
+                message = new Mensagem("GET", key, timestamp);
+                send.writeBytes(gson.toJson(message)+"\n");
+
+                /*response = receive.readLine();
                 System.out.println("----------------------");
                 System.out.println("From server ("+socket.getInetAddress()+"): "+response);
-                System.out.println("----------------------");
+                System.out.println("----------------------");*/
             }
             socket.close();
                     

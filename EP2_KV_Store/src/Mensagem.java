@@ -1,17 +1,20 @@
 import java.sql.Timestamp;
 
 public class Mensagem {
-    private final String type;
-
+    private String type;
     private String ip;
     private Integer port;
-
     private String key;
     private String value;
     private Timestamp timestamp;
 
     public Mensagem (String type) {
         this.type = type;
+    }
+
+    public Mensagem (String type, Timestamp timestamp) {
+        this.type = type;
+        this.timestamp = timestamp;
     }
 
     public Mensagem (String type, String ip, Integer port) {
@@ -38,6 +41,12 @@ public class Mensagem {
         this.value = value;
         this.timestamp = timestamp;
     }
+
+    /*
+    public Mensagem (String value, Timestamp timestamp) {
+        this.value = value;
+        this.timestamp = timestamp;
+    }*/
 
     public String getIp() {
         return ip;
